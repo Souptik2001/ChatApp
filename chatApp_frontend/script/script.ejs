@@ -1,18 +1,245 @@
 <script>
-    // console.log("Hello");
-    console.log("yo");
-    console.log(myData);
-    // const fetch = require("node-fetch");
-    // async function loadChats() {
-    //     let chats = await fetch(endpoint + '/loadChats/?username=' + username + other);
-    // }
-    // loadChats();
-    // async function updateMessage() {
-    //     let response = await fetch(endpoint + '/getLatest/?username=' + username + other);
-    // }
-    // async function pushData() {
-    //     console.log("Pushed");
-    // }
+    var p_i;
+    var f_i;
+    var contacts_l = [];
+    var changingUser = 0;
+    var unread = [];
+    var observer = new IntersectionObserver((entries, observer) => {
 
+    }, {});
+    var receiver;
+    var endpoint = "http://127.0.0.1:3001";
+    var HTTP = new XMLHttpRequest();
+    var chatBox = document.getElementById('chats_i');
+    // chatBox.scrollTo(0, chatBox.scrollHeight);
+    chatBox.scrollIntoView(false);
+    // For initial loading of messages
+    function getData() {
+        return new Promise((resolve, reject) => {
+            HTTP = new XMLHttpRequest();
+            HTTP.onreadystatechange = function() {
+                if (HTTP.readyState == XMLHttpRequest.DONE) {
+                    resolve((JSON.parse(HTTP.responseText)));
+                }
+            }
+            HTTP.open("GET", endpoint + `/getData?sender=${username}&receiver=${receiver}&items=16`, true);
+            HTTP.send();
+        });
+    }
+    // For lazy loading messages
+    function loadData() {
+        return new Promise((resolve, reject) => {
+            HTTP = new XMLHttpRequest();
+            HTTP.onreadystatechange = function() {
+                if (HTTP.readyState == XMLHttpRequest.DONE) {
+                    resolve((JSON.parse(HTTP.responseText)));
+                }
+            }
+            HTTP.open("GET", endpoint + `/loadData?sender=${username}&receiver=${receiver}&items=16&index=${f_i}`, true);
+            HTTP.send();
+        });
+    }
+
+    function getContacts() {
+        return new Promise(async(resolve, reject) => {
+            HTTP = new XMLHttpRequest();
+            HTTP.onreadystatechange = function() {
+                if (HTTP.readyState == XMLHttpRequest.DONE) {
+                    resolve((JSON.parse(HTTP.responseText)));
+                }
+            }
+            await HTTP.open("GET", endpoint + `/getContacts?user=${username}`, true);
+            await HTTP.send();
+        });
+    }
+
+    function lastMessage(friend) {
+        return new Promise(async(resolve, reject) => {
+            HTTP = new XMLHttpRequest();
+            HTTP.onreadystatechange = function() {
+                if (HTTP.readyState == XMLHttpRequest.DONE) {
+                    resolve((JSON.parse(HTTP.responseText)));
+                }
+            }
+            await HTTP.open("GET", endpoint + `/lastMessage?sender=${username}&receiver=${friend}`, true);
+            await HTTP.send();
+        });
+    }
+    //Starting point of the app
+    getContacts().then(async(contacts) => {
+        for (var i = 0; i < contacts.length; i++) {
+            if (contacts[i].user1 == username) {
+                document.getElementById('contacts_i').innerHTML += `<div class="contact" id=${contacts[i].user2} onclick="changeReceiver('${contacts[i].user2}')"><div>${contacts[i].user2}</div></div><div style="height: 1px; background-color: #EAEFF5"></div>`;
+                var temp = [];
+                var val = await lastMessage(contacts[i].user2);
+                temp.push(contacts[i].user2);
+                temp.push(val);
+                temp.push(0);
+                contacts_l.push(temp);
+            } else {
+                document.getElementById('contacts_i').innerHTML += `<div class="contact" id=${contacts[i].user1} onclick="changeReceiver('${contacts[i].user1}')"><div>${contacts[i].user1}</div></div><div style="height: 1px; background-color: #EAEFF5"></div>`;
+                var temp = [];
+                var val = await lastMessage(contacts[i].user1);
+                temp.push(contacts[i].user1);
+                temp.push(val);
+                temp.push(0);
+                contacts_l.push(temp);
+            }
+        }
+        chatBox.scrollTo(0, chatBox.scrollHeight);
+    });
+
+    function changeReceiver(user) {
+        changingUser = 1;
+        if (unread.indexOf(user) != -1) {
+            document.getElementById(user).innerHTML = `<div>${user}</div>`;
+            unread.splice(unread.indexOf(user), 1);
+            contacts_l.forEach((item, index) => {
+                if (item[0] == user) {
+                    item[2] = 0;
+                }
+            });
+        }
+        if (receiver != undefined) {
+            document.getElementById(receiver).innerText = document.getElementById(receiver).id;
+        }
+        receiver = user;
+        document.getElementById(receiver).innerHTML = `<strong>${document.getElementById(receiver).innerText}  >></strong>`
+        getData().then(msgs => {
+            chatBox.innerHTML = "";
+            f_i = msgs[0].id;
+            for (var i = 0; i < msgs.length; i++) {
+                if (msgs[i].sender == username) {
+                    chatBox.innerHTML += `<div class="you chat">${msgs[i].txt}<div>`;
+                } else {
+                    chatBox.innerHTML += `<div class="other chat">${msgs[i].txt}<div>`;
+                }
+                if (i == msgs.length - 1) {
+                    p_i = msgs[i].id;
+                }
+            }
+            changingUser = 0;
+        });
+    }
+
+    function checkNewMessage(index, rec) {
+        return new Promise(async(resolve, reject) => {
+            if (receiver != undefined) {
+                HTTP = new XMLHttpRequest();
+                HTTP.onreadystatechange = function() {
+                    if (HTTP.readyState == XMLHttpRequest.DONE) {
+                        resolve((JSON.parse(HTTP.responseText)));
+                    }
+                }
+                await HTTP.open("GET", endpoint + `/newMessage?sender=${username}&receiver=${rec}&index=${index}`, true);
+                await HTTP.send();
+            }
+        });
+    };
+
+    function checkNewMessage2(index, rec) {
+        console.log(rec);
+        return new Promise(async(resolve, reject) => {
+            HTTP = new XMLHttpRequest();
+            HTTP.onreadystatechange = function() {
+                if (HTTP.readyState == XMLHttpRequest.DONE) {
+                    resolve((JSON.parse(HTTP.responseText)));
+                }
+            }
+            await HTTP.open("GET", endpoint + `/newMessage?sender=${username}&receiver=${rec}&index=${index}`, true);
+            await HTTP.send();
+        });
+    };
+    setInterval(() => {
+        if (changingUser == 0) {
+            if (p_i != undefined) {
+                checkNewMessage(p_i, receiver).then((newMessages) => {
+                    for (var i = 0; i < newMessages.length; i++) {
+                        if (newMessages[i].sender == username) {
+                            chatBox.innerHTML += `<div class="you chat">${newMessages[i].txt}<div>`;
+                            chatBox.scrollTo(0, chatBox.scrollHeight);
+                        } else {
+                            chatBox.innerHTML += `<div class="other chat">${newMessages[i].txt}<div>`;
+                            chatBox.scrollTo(0, chatBox.scrollHeight);
+                        }
+                        if (i == newMessages.length - 1) {
+                            p_i = newMessages[i].id;
+                        }
+                    }
+                });
+            }
+        }
+    }, 10);
+
+    function dummyawait() {
+        return new Promise((resolve, reject) => {
+            setTimeout(() => {
+                resolve();
+            }, 4000);
+        })
+    }
+    setInterval(async() => {
+        if (changingUser == 0) {
+            // console.log(contacts_l);
+            contacts_l.forEach(async(item, index) => {
+                console.log(item[0]);
+                var newContactMessages = await checkNewMessage2(item[1], item[0]);
+                console.log("Hello");
+                await dummyawait();
+                console.log(newContactMessages);
+                if (item[0] != receiver) {
+                    if (newContactMessages.length > 0) {
+                        if (item[2] == 0) {
+                            document.getElementById(item[0]).innerHTML += `<div style="background-color: red; width:20px; height:20px; color:white; text-align:center; border-radius: 50px; display:flex; justify-content: center; align-items: center; margin-left:10px; padding:10px"><div id="count_${item[0]}">${newContactMessages.length}</div></div>`;
+                            item[2] += newContactMessages.length
+                        } else {
+                            item[2] += newContactMessages.length
+                            document.getElementById(`count_${item[0]}`).innerText = item[2];
+                        }
+                        console.log(contacts_l);
+                        contacts_l[index][1] = newContactMessages[newContactMessages.length - 1].id;
+                        // console.log(contacts_l);
+                        if (unread.indexOf(item[0]) == -1) {
+                            unread.push(item[0]);
+                        }
+                    }
+                }
+            });
+        }
+    }, 10000);
+
+    function logout() {
+        document.cookie = "authorization=; expires=Thu, 01 Jan 1970 00:00:00 UTC";
+        location.reload();
+    }
+    async function pushData() {
+        if (receiver != undefined) {
+            if (document.getElementById('msg').value != "") {
+                HTTP = new XMLHttpRequest();
+                await HTTP.open("POST", endpoint + "/pushData", true);
+                HTTP.setRequestHeader("Content-type", "application/json");
+                HTTP.send(JSON.stringify({
+                    txt: document.getElementById('msg').value,
+                    sender: username,
+                    receiver: receiver
+                }));
+                document.getElementById('msg').value = "";
+                checkNewMessage(p_i).then((newMessages) => {
+                    for (var i = 0; i < newMessages.length; i++) {
+                        if (newMessages[i].sender == username) {
+                            chatBox.innerHTML += `<div class="you chat">${newMessages[i].txt}<div>`;
+                        } else {
+                            chatBox.innerHTML += `<div class="other chat">${newMessages[i].txt}<div>`;
+                        }
+                        if (i == newMessages.length - 1) {
+                            p_i = newMessages[i].id;
+                        }
+                    }
+                    chatBox.scrollTo(0, chatBox.scrollHeight);
+                });
+            }
+        }
+        document.getElementById('msg').value = "";
+    }
     // setInterval(updateMessage, 10);
 </script>

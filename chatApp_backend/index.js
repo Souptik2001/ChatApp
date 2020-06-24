@@ -4,6 +4,7 @@
 //     email VARCHAR(255) NOT NULL,
 //     PRIMARY KEY (id)
 // )
+const cookieParser = require('cookie-parser');
 const express = require('express');
 var nodemailer = require('nodemailer');
 var jwt = require('jsonwebtoken');
@@ -12,6 +13,8 @@ const bodyParser = require('body-parser');
 var mysql = require('mysql');
 var ejs = require('ejs');
 const app = express();
+// Instead of bodyParser we could directly use express.json ,etc...also
+app.use(cookieParser());
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(bodyParser.json());
 app.use(bodyParser.raw());
@@ -201,13 +204,32 @@ app.get('/lastMessage', (req, res) => {
 
 // APIs for web app
 app.get('/login', (req, res) => {
-    readFile('./chatApp_frontend/login.html', 'utf8')
-        .then(html => {
-            res.send(html);
-        })
-        .catch(() => { res.send("Failed to load login page please try later"); });
+    var cookies_s = req.headers.cookie;
+    var auth_token;
+    if (cookies_s != undefined) {
+        var cookies = cookies_s.split("; ");
+        for (var i = 0; i < cookies.length; i++) {
+            if (cookies[i].indexOf("authorization=") == 0) {
+                auth_token = cookies[i].substring("authorization=".length, cookies[i].length);
+                break;
+            }
+        }
+        if (auth_token != undefined) {
+            jwt.verify(auth_token, 'secret_key', (err, user) => {
+                if (err) {
+                    res.render('login');
+                }
+                res.redirect('/');
+            });
+        } else {
+            res.render('login');
+        }
+    } else {
+        res.render('login');
+    }
 });
 app.post('/login', (req, res) => {
+    console.log("Hey");
     if (req.body.email != undefined & req.body.endpoint != undefined) {
         var q = `SELECT * FROM logins WHERE username=\'${req.body.email}\' OR email=\'${req.body.email}\'`;
         connection.query(q, (err, result) => {
@@ -270,7 +292,8 @@ app.get('/verify', (req, res) => {
                             });
                         } else {
                             const access_token = jwt.sign(userNameAndEmail, 'secret_key');
-                            res.json({ access_token: access_token }); // We need to save this token in the cokkie or local storage of our system in the frontend
+                            res.cookie('authorization', access_token, { maxAge: 9000000000000 });
+                            res.redirect('/');
                         }
                     });
                 } else {

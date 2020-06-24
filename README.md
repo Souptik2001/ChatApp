@@ -29,3 +29,22 @@ The database contains total three table -> **logins, contacts, chats**
 - *"/verify"* ->
 
 *All APIs are not yet documented.*
+
+## Frontend Sructure
+
+- The frontend gets the username from the backend.
+- Few major variables are initialized ->
+  - username (the value of which is determined by the backend)
+  - p_i (it is the present index of message of the present receiver)
+  - f_i (it is the topmost index of message of the current receiver this is used for lazy loading)
+  - contacts (array contains all the contacts of the current user)
+- Then the first thing which happens is the loading of the contacts by the getContacts() function amd also make an object of all the contacts named contacts_l.
+- After that when a user clicks on any one of its contact the changeReceiver() function gets called and the receiver variable is set to the receiver the user clicked on. Then the chat box is emptied(already empty if this is for the first time) and then particular number of chats are loaded. The id of the chat loaded at the end is passed to the variable p_i and the id of the chat at the beginnning is passed to the f_i variable.
+**Approach for realtime data fetchig**
+- A function called checkNewMessage runs at a definite interval in two forms -
+  - First one is for all the contacs except the receiver(50ms)
+  - Second is for the receiver(1s)
+- The pushData() function is executed when send button is pressed which pushes the message to the database and also runs the checkNewMessages() functions to load that message to the chatBox and also update the p_i.
+**Approach for lazy loading**
+
+IN progress....
