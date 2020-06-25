@@ -113,6 +113,7 @@ app.get('/loadData', (req, res) => {
     if (req.query.index != undefined & req.query.items != undefined & req.query.sender != undefined & req.query.receiver != undefined) {
         connection.query(q, (err, result) => {
             if (err) {
+                console.log(err);
                 res.json({
                     "Error": err
                 });

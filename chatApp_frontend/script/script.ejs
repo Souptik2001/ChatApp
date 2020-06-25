@@ -1,12 +1,11 @@
 <script>
+    var c_i = 0; // For checking new messages of all contacts
     var p_i;
     var f_i;
     var contacts_l = [];
     var changingUser = 0;
+    var loadingPrev = 0;
     var unread = [];
-    var observer = new IntersectionObserver((entries, observer) => {
-
-    }, {});
     var receiver;
     var endpoint = "http://127.0.0.1:3001";
     var HTTP = new XMLHttpRequest();
@@ -22,7 +21,7 @@
                     resolve((JSON.parse(HTTP.responseText)));
                 }
             }
-            HTTP.open("GET", endpoint + `/getData?sender=${username}&receiver=${receiver}&items=16`, true);
+            HTTP.open("GET", endpoint + `/getData?sender=${username}&receiver=${receiver}&items=20`, true);
             HTTP.send();
         });
     }
@@ -35,10 +34,40 @@
                     resolve((JSON.parse(HTTP.responseText)));
                 }
             }
-            HTTP.open("GET", endpoint + `/loadData?sender=${username}&receiver=${receiver}&items=16&index=${f_i}`, true);
+            HTTP.open("GET", endpoint + `/loadData?sender=${username}&receiver=${receiver}&items=20&index=${f_i}`, true);
             HTTP.send();
         });
     }
+    var observer = new IntersectionObserver((entries, observer) => {
+        var entry = entries[entries.length - 1];
+        if (entry.isIntersecting) {
+            loadingPrev = 1;
+            observer.unobserve(document.getElementById('topmost'));
+            loadData().then((msgs) => {
+                if (msgs.length > 0) {
+                    f_i = msgs[0].id;
+                    for (var i = msgs.length - 1; i >= 0; i--) {
+                        document.getElementById('topmost').setAttribute("id", "prevtop");
+                        var newMsg = document.createElement("div");
+                        var node = document.createTextNode(msgs[i].txt);
+                        newMsg.appendChild(node);
+                        newMsg.setAttribute("id", "topmost");
+                        if (msgs[i].sender == username) {
+                            newMsg.setAttribute("class", "you chat");
+                        } else {
+                            newMsg.setAttribute("class", "other chat");
+                        }
+                        chatBox.insertBefore(newMsg, document.getElementById('prevtop'));
+                        document.getElementById('prevtop').removeAttribute("id");
+                    }
+                    observer.observe(document.getElementById('topmost'));
+                    loadingPrev = 0;
+                }
+            });
+
+        }
+
+    });
 
     function getContacts() {
         return new Promise(async(resolve, reject) => {
@@ -110,19 +139,29 @@
             f_i = msgs[0].id;
             for (var i = 0; i < msgs.length; i++) {
                 if (msgs[i].sender == username) {
-                    chatBox.innerHTML += `<div class="you chat">${msgs[i].txt}<div>`;
+                    if (i == 0) {
+                        chatBox.innerHTML += `<div class="you chat" id="topmost">${msgs[i].txt}</div>`;
+                    } else {
+                        chatBox.innerHTML += `<div class="you chat">${msgs[i].txt}</div>`;
+                    }
                 } else {
-                    chatBox.innerHTML += `<div class="other chat">${msgs[i].txt}<div>`;
+                    if (i == 0) {
+                        chatBox.innerHTML += `<div class="other chat" id="topmost">${msgs[i].txt}</div>`;
+                    } else {
+                        chatBox.innerHTML += `<div class="other chat">${msgs[i].txt}</div>`;
+                    }
                 }
+                chatBox.scrollTo(0, chatBox.scrollHeight);
                 if (i == msgs.length - 1) {
                     p_i = msgs[i].id;
                 }
             }
+            observer.observe(document.getElementById('topmost'));
             changingUser = 0;
         });
     }
 
-    function checkNewMessage(index, rec) {
+    function checkNewMessage(index, rec = receiver) {
         return new Promise(async(resolve, reject) => {
             if (receiver != undefined) {
                 HTTP = new XMLHttpRequest();
@@ -137,8 +176,7 @@
         });
     };
 
-    function checkNewMessage2(index, rec) {
-        console.log(rec);
+    function checkNewMessage_a(index, rec) {
         return new Promise(async(resolve, reject) => {
             HTTP = new XMLHttpRequest();
             HTTP.onreadystatechange = function() {
@@ -151,7 +189,7 @@
         });
     };
     setInterval(() => {
-        if (changingUser == 0) {
+        if (changingUser == 0 & loadingPrev == 0) {
             if (p_i != undefined) {
                 checkNewMessage(p_i, receiver).then((newMessages) => {
                     for (var i = 0; i < newMessages.length; i++) {
@@ -164,49 +202,50 @@
                         }
                         if (i == newMessages.length - 1) {
                             p_i = newMessages[i].id;
+                            for (var j = 0; j < contacts_l.length; j++) {
+                                if (contacts_l[j][0] == receiver) {
+                                    contacts_l[j][1] = p_i;
+                                    break;
+                                }
+                            }
                         }
                     }
                 });
             }
         }
     }, 10);
-
-    function dummyawait() {
-        return new Promise((resolve, reject) => {
-            setTimeout(() => {
-                resolve();
-            }, 4000);
-        })
-    }
     setInterval(async() => {
-        if (changingUser == 0) {
+        if (changingUser == 0 & loadingPrev == 0) {
             // console.log(contacts_l);
-            contacts_l.forEach(async(item, index) => {
-                console.log(item[0]);
-                var newContactMessages = await checkNewMessage2(item[1], item[0]);
-                console.log("Hello");
-                await dummyawait();
-                console.log(newContactMessages);
-                if (item[0] != receiver) {
-                    if (newContactMessages.length > 0) {
-                        if (item[2] == 0) {
-                            document.getElementById(item[0]).innerHTML += `<div style="background-color: red; width:20px; height:20px; color:white; text-align:center; border-radius: 50px; display:flex; justify-content: center; align-items: center; margin-left:10px; padding:10px"><div id="count_${item[0]}">${newContactMessages.length}</div></div>`;
-                            item[2] += newContactMessages.length
-                        } else {
-                            item[2] += newContactMessages.length
-                            document.getElementById(`count_${item[0]}`).innerText = item[2];
-                        }
-                        console.log(contacts_l);
-                        contacts_l[index][1] = newContactMessages[newContactMessages.length - 1].id;
-                        // console.log(contacts_l);
-                        if (unread.indexOf(item[0]) == -1) {
-                            unread.push(item[0]);
-                        }
+            var item = contacts_l[c_i];
+            // console.log(item[0]);
+            var newContactMessages = await checkNewMessage_a(item[1], item[0]);
+            // console.log("Hello");
+            // console.log(newContactMessages);
+            if (item[0] != receiver) {
+                if (newContactMessages.length > 0) {
+                    if (item[2] == 0) {
+                        document.getElementById(item[0]).innerHTML += `<div style="background-color: red; width:20px; height:20px; color:white; text-align:center; border-radius: 50px; display:flex; justify-content: center; align-items: center; margin-left:10px; padding:10px"><div id="count_${item[0]}">${newContactMessages.length}</div></div>`;
+                        item[2] += newContactMessages.length
+                    } else {
+                        item[2] += newContactMessages.length
+                        document.getElementById(`count_${item[0]}`).innerText = item[2];
+                    }
+                    console.log(contacts_l);
+                    contacts_l[c_i][1] = newContactMessages[newContactMessages.length - 1].id;
+                    // console.log(contacts_l);
+                    if (unread.indexOf(item[0]) == -1) {
+                        unread.push(item[0]);
                     }
                 }
-            });
+            }
+            if (c_i == contacts_l.length - 1) {
+                c_i = 0;
+            } else {
+                c_i++;
+            }
         }
-    }, 10000);
+    }, 500);
 
     function logout() {
         document.cookie = "authorization=; expires=Thu, 01 Jan 1970 00:00:00 UTC";
@@ -224,7 +263,7 @@
                     receiver: receiver
                 }));
                 document.getElementById('msg').value = "";
-                checkNewMessage(p_i).then((newMessages) => {
+                checkNewMessage(p_i, receiver).then((newMessages) => {
                     for (var i = 0; i < newMessages.length; i++) {
                         if (newMessages[i].sender == username) {
                             chatBox.innerHTML += `<div class="you chat">${newMessages[i].txt}<div>`;
@@ -232,6 +271,7 @@
                             chatBox.innerHTML += `<div class="other chat">${newMessages[i].txt}<div>`;
                         }
                         if (i == newMessages.length - 1) {
+                            console.log("Hey");
                             p_i = newMessages[i].id;
                         }
                     }
