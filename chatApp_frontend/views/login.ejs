@@ -32,7 +32,7 @@
         function checkingCred() {
             return new Promise(async(resolve, reject) => {
                 console.log("Clicked");
-                var endpoint = "http://127.0.0.1:3001";
+                var endpoint = process.env.END_POINT;
                 var cred = document.getElementById('cred').value;
                 if (cred != "") {
                     var HTTP = new XMLHttpRequest();
