@@ -20,7 +20,7 @@ app.use(bodyParser.urlencoded({ extended: true }));
 app.use(bodyParser.json());
 app.use(bodyParser.raw());
 app.use(bodyParser.text());
-app.set('views', '../chatApp_frontend/views');
+app.set('views', './chatApp_frontend/views');
 app.set('view engine', 'ejs');
 var connection = mysql.createPool({
     host: process.env.MYSQL_HOST || 'localhost',
