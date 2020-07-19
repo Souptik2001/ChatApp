@@ -32,13 +32,12 @@
         function checkingCred() {
             return new Promise(async(resolve, reject) => {
                 console.log("Clicked");
-                var endpoint = process.env.END_POINT;
+                var endpoint = 'https://funnchat.herokuapp.com';
                 var cred = document.getElementById('cred').value;
                 if (cred != "") {
                     var HTTP = new XMLHttpRequest();
                     HTTP.onreadystatechange = function() {
                         if (HTTP.readyState == XMLHttpRequest.DONE) {
-                            console.log("Clicked");
                             resolve((HTTP.responseText));
                         }
                     }
@@ -53,7 +52,6 @@
         }
 
         function checkCred() {
-            console.log("Clicked");
             checkingCred().then(msg => {
                 document.body.innerHTML = `<h2><em>${msg}</em></h2>`;
             });
