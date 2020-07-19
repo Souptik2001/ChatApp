@@ -13,6 +13,7 @@ const bodyParser = require('body-parser');
 var mysql = require('mysql');
 var ejs = require('ejs');
 const app = express();
+require('dotenv').config();
 // Instead of bodyParser we could directly use express.json ,etc...also
 app.use(cookieParser());
 app.use(bodyParser.urlencoded({ extended: true }));
@@ -21,24 +22,31 @@ app.use(bodyParser.raw());
 app.use(bodyParser.text());
 app.set('views', '../chatApp_frontend/views');
 app.set('view engine', 'ejs');
-var connection = mysql.createConnection({
-    host: 'localhost',
-    user: 'root',
-    password: '',
-    database: 'funchat'
+var connection = mysql.createPool({
+    host: process.env.MYSQL_HOST || 'localhost',
+    user: process.env.MYSQL_USER || 'root',
+    password: process.env.MYSQL_PASS || '',
+    database: process.env.MYSQL_DB || 'funchat',
+    connectionLimit: 10
 });
-connection.connect((err) => {
-    if (err) {
-        console.log(err);
-    } else {
-        console.log("Connection eshtablished succesfully....");
-    }
-});
+// var connection = mysql.createConnection({
+//     host: 'db4free.net ',
+//     user: 'souptik',
+//     password: 'af38e435',
+//     database: 'souptik'
+// });
+// connection.connect((err) => {
+//     if (err) {
+//         console.log(err);
+//     } else {
+//         console.log("Connection eshtablished succesfully....");
+//     }
+// });
 var transporter = nodemailer.createTransport({
     service: 'gmail',
     auth: {
         user: 'testify2001@gmail.com',
-        pass: 'hello@world'
+        pass: 'n9ENtyyJub9PpEk'
     }
 });
 
@@ -59,8 +67,8 @@ app.post('/pushData', (req, res) => {
     // SAMPLE BODY
     // {
     //     "txt":"Hey wht's up",
-    //     "sender":"souptik",
-    //      "receiver":"rounak"
+    //     "sender":"abc",
+    //      "receiver":"xyz"
     // }
     if (req.body.sender != undefined & req.body.receiver != undefined & req.body.txt != undefined) {
         // var q = `INSERT INTO (SELECT dbName FROM ${req.body.receiver} WHERE contact=${req.body.sender}) SET ?`;
@@ -329,6 +337,42 @@ app.get('/', (req, res) => {
         }
     } else {
         res.redirect('/login');
+    }
+});
+app.get('/searchUser', (req, res) => {
+    if (req.query.pat != undefined) {
+        var q = `SELECT * FROM logins WHERE username LIKE '${req.query.pat}%' OR email LIKE '${req.query.pat}%'`;
+        connection.query(q, (err, result) => {
+            if (err) {
+                res.json(err);
+            } else {
+                res.json(result);
+            }
+        });
+    } else {
+        res.json({
+            "Error": "No pattern provided"
+        });
+    }
+});
+app.post('/startUser', (req, res) => {
+    if (req.query.sender != undefined & req.query.rec != undefined) {
+        var q = `INSERT INTO contacts SET ?`;
+        var post = {
+            user1: req.query.sender,
+            user2: req.query.rec
+        };
+        connection.query(q, post, (err, result) => {
+            if (err) {
+                console.log(err);
+                res.send(err);
+            } else {
+                console.log(result);
+                res.send(result);
+            }
+        });
+    } else {
+        res.send("Enter params");
     }
 });
 // app.get('/logout', (req, res) => {

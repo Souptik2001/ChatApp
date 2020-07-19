@@ -3,6 +3,7 @@
     var p_i;
     var f_i;
     var contacts_l = [];
+    var contacts_obj = {};
     var changingUser = 0;
     var loadingPrev = 0;
     var unread = [];
@@ -102,6 +103,7 @@
                 var temp = [];
                 var val = await lastMessage(contacts[i].user2);
                 temp.push(contacts[i].user2);
+                contacts_obj[contacts[i].user2] = "1";
                 temp.push(val);
                 temp.push(0);
                 contacts_l.push(temp);
@@ -110,6 +112,7 @@
                 var temp = [];
                 var val = await lastMessage(contacts[i].user1);
                 temp.push(contacts[i].user1);
+                contacts_obj[contacts[i].user1] = "1";
                 temp.push(val);
                 temp.push(0);
                 contacts_l.push(temp);
@@ -136,7 +139,11 @@
         document.getElementById(receiver).innerHTML = `<strong>${document.getElementById(receiver).innerText}  >></strong>`
         getData().then(msgs => {
             chatBox.innerHTML = "";
-            f_i = msgs[0].id;
+            try{
+                f_i = msgs[0].id;
+            }catch{
+                f_i = 0;
+            }
             for (var i = 0; i < msgs.length; i++) {
                 if (msgs[i].sender == username) {
                     if (i == 0) {
@@ -156,7 +163,12 @@
                     p_i = msgs[i].id;
                 }
             }
-            observer.observe(document.getElementById('topmost'));
+            if(p_i==undefined){
+                p_i=0;
+            }
+            if(document.getElementById('topmost')!=null){
+                observer.observe(document.getElementById('topmost'));
+            }
             changingUser = 0;
         });
     }
@@ -281,5 +293,55 @@
         }
         document.getElementById('msg').value = "";
     }
-    // setInterval(updateMessage, 10);
+
+    function searchUser_u(pat) {
+        return new Promise(async(resolve, reject) => {
+            changingUser = 0;
+            var HTTP = new XMLHttpRequest();
+            HTTP.onreadystatechange = function() {
+                if (HTTP.readyState == XMLHttpRequest.DONE) {
+                    changingUser = 1;
+                    resolve((JSON.parse(HTTP.responseText)));
+                }
+            }
+            await HTTP.open("GET", `${endpoint}/searchUser?pat=${pat}`, true);
+            await HTTP.send();
+        });
+    }
+
+    function searchUser() {
+        if (document.getElementById('user_s_i').value == "") {
+            document.getElementById('options_i').innerHTML = "";
+        } else {
+            searchUser_u(document.getElementById('user_s_i').value).then((val) => {
+                console.log("abi" in contacts_obj);
+                for (var i = 0; i < val.length; i++) {
+                    if(!(val[i].username in contacts_obj)){
+                        document.getElementById('options_i').innerHTML = "";
+                        document.getElementById('options_i').innerHTML += `<p style="color: black; padding-top: 5px;padding-bottom: 5px; width:80%; border-radius: 8px;margin: 0; border-bottom: solid 1px rgb(0, 0, 0);" onClick="setUser('${val[i].username}')" class="eachSearchUser"><strong>${val[i].username}</strong></p>`;
+                    }
+                }
+            });
+        }
+    }
+
+    function setUser_u(user) {
+        return new Promise(async(resolve, reject) => {
+            changingUser = 1;
+            var HTTP = new XMLHttpRequest();
+            await HTTP.open("POST", `${endpoint}/startUser?sender=${username}&rec=${user}`, true);
+            await HTTP.send();
+            changingUser = 0;
+            resolve();
+        });
+    }
+
+    function setUser(user) {
+        setUser_u(user).then(async() => {
+            document.getElementById('options_i').innerHTML = "";
+            document.getElementById('user_s_i').value = "";
+            document.getElementById('contacts_i').innerHTML += `<div class="contact" id=${user} onclick="changeReceiver('${user}')"><div>${user}</div></div><div style="height: 1px; background-color: #EAEFF5"></div>`;
+
+        });
+    }
 </script>

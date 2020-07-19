@@ -1,0 +1,20 @@
+{
+  "name": "chatapp",
+  "version": "1.0.0",
+  "description": "*The backend of this app has been developed using express and the frontend is designed using HTML , CSS and JS only. SQL databse has been used.*",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start":"cd chatApp_backend && npm install && nodemon index.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Souptik2001/ChatApp.git"
+  },
+  "author": "Souptik Datta",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/Souptik2001/ChatApp/issues"
+  },
+  "homepage": "https://github.com/Souptik2001/ChatApp#readme"
+}
